@@ -5,7 +5,7 @@ Description: This library contains core algorithm to simulate different AFM meas
 """
 
 import numpy as np
-from sympy import *
+import sympy as sym
 
 
 def differential_constants(model, p1, p2, p3):
@@ -30,20 +30,20 @@ def differential_constants(model, p1, p2, p3):
                     q:  array of floats
                         differential constants q0, q1, ... qn
     """
-    s = symbols('s')
+    s = sym.symbols('s')
 
     if model == 'Gen. Kelvin-Voigt':
         if len(p2) == len(p3):  # checks J and tau are same lenght
             U = p1 + sum(p2[:] / (1.0 + p3[:] * s))
             U_n = (U).normal()  # writes retardance with common denominator
 
-            u_n = numer(U_n)  # selects the numerator
-            u_n = expand(u_n)  # expands each term
-            u_n = collect(u_n, s)  # collect the terms with the same exponent of s
+            u_n = sym.numer(U_n)  # selects the numerator
+            u_n = sym.expand(u_n)  # expands each term
+            u_n = sym.collect(u_n, s)  # collect the terms with the same exponent of s
 
-            q_n = denom(U_n)  # selects the denominator
-            q_n = expand(q_n)  # expands each term
-            q_n = collect(q_n, s)  # collect the terms with the same exponent of s
+            q_n = sym.denom(U_n)  # selects the denominator
+            q_n = sym.expand(q_n)  # expands each term
+            q_n = sym.collect(q_n, s)  # collect the terms with the same exponent of s
 
             q_arr = np.zeros(len(p2) + 1)  # initializes array with lenght J, tau + 1 to store q
             u_arr = np.zeros(len(p2) + 1)  # initializes array with lenght J, tau + 1 to store u
@@ -59,13 +59,13 @@ def differential_constants(model, p1, p2, p3):
             Q = p1 + sum((p2[:] * p3[:]) / (1.0 + p3[:] * s))
             Q_n = (Q).normal()  # writes retardance with common denominator
 
-            u_n = denom(Q_n)  # selects the denominator
-            u_n = expand(u_n)  # expands each term
-            u_n = collect(u_n, s)  # collect the terms with the same exponent of s
+            u_n = sym.denom(Q_n)  # selects the denominator
+            u_n = sym.expand(u_n)  # expands each term
+            u_n = sym.collect(u_n, s)  # collect the terms with the same exponent of s
 
-            q_n = numer(Q_n)  # selects the numerator
-            q_n = expand(q_n)  # expands each term
-            q_n = collect(q_n, s)  # collect the terms with the same exponent of s
+            q_n = sym.numer(Q_n)  # selects the numerator
+            q_n = sym.expand(q_n)  # expands each term
+            q_n = sym.collect(q_n, s)  # collect the terms with the same exponent of s
 
             q_arr = np.zeros(len(p2) + 1)  # initializes array with lenght J, tau + 1 to store q
             u_arr = np.zeros(len(p2) + 1)  # initializes array with lenght J, tau + 1 to store u
