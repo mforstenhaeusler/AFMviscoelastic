@@ -7,10 +7,7 @@ Example of using the contact_mode function to simulate a force spectroscopy expe
 """
 
 import numpy as np
-import matplotlib.pyplot as plt
-from matplotlib import cm
 from numba import jit
-from joblib import dump
 import time as tm
 
 import sys

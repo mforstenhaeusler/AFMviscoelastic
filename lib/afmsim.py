@@ -78,6 +78,49 @@ def differential_constants(model, p1, p2, p3):
 
     return u_arr, q_arr
 
+def uq_prescribed(simultime, u ,q,z_indent,R=10.0e-9):
+    """
+    This simulation gives the resulting force in time when a generalized viscoelastic material is indented with a known indentation history
+    
+    Input:
+        simultime: float, total time of the simulation in seconds
+        u: numpy array, coefficients of the generalized differential equation (operator equation, i.e., Eq 2 in López‐Guerra, et.al. JPolSciB, 55(10) )
+        q: numpy array, coefficients of the generalized differential equation (operator equation, i.e., Eq 2 in López‐Guerra, et.al. JPolSciB, 55(10) )
+        z_indent: numpy array: indentation history
+        R: float, optional, tip radius
+    Output:
+        t: numpy array, this is the time array
+        z_indent: numpy array, indentation history
+        Fts: numpy array, force history that corresponds to the input indentation history    
+    """
+    
+    alpha = 16.0/3.0*np.sqrt(R)  #cell constant, from Lee and Radok equation, assumed material incompressibility (nu=0.5)
+    ndt= len(z_indent) #number of timesteps
+    t = np.linspace(0.0,simultime,ndt)   #defining time array
+    dt = t[-1]/len(t) #timestep
+    
+    Y_ndot = np.zeros((len(t),len(q)))   #zero initialization of derivatives of indentation^1.5
+    F_mdot = np.zeros((len(t),len(q)))  #zero initialization of derivatives of force
+    Fts = np.zeros(len(t))      #initialization of Force array
+        
+    for k in np.arange(1,len(t),1): #advancing in time        
+        Y_ndot[k,0] = z_indent[k]**1.5  #zero derivative of indentation^1.5 corresponds to sample deformation^1.5
+        for i in np.arange(1,len(q),1):  #calculating higher derivatives for indentation^1.5
+            Y_ndot[k,i] = (Y_ndot[k,i-1]-Y_ndot[k-1,i-1])/dt
+        suma_q = 0.0
+        for i in np.arange(0,len(q),1):#range(len(q)):
+            suma_q = suma_q + alpha/u[-1]*q[i]*Y_ndot[k,i]
+        #print('Suma Q: %2.12f'%suma_q)
+        suma_u = 0.0
+        for i in np.arange(0,len(q)-1,1):
+            suma_u = suma_u + 1.0/u[-1]*u[i]*F_mdot[k-1,i]
+        #print('Suma U: %2.12f'%suma_u)
+        F_mdot[k,-1] = suma_q - suma_u  #Calculating highest order time derivative on Force
+        for i in np.arange(len(q)-2,-1,-1): #calculating lower order time derivatives on Force from the highest one, using Euler scheme
+            F_mdot[k,i] = F_mdot[k-1,i] + F_mdot[k,i+1]*dt        
+        Fts[k] = F_mdot[k,0]  #zero derivative of force is Fts
+    return t, z_indent, Fts
+
 
 def contact_mode(t, timestep, zb_init, vb, u, q, k_m1, fo1, Q1, vdw, R, nu, z_contact=0.0, F_trigger=800.0e-9, H=2.0e-19, a=0.2e-9):
     """
