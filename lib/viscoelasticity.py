@@ -17,10 +17,13 @@ def G_storage(omega, Ge, G, tau):
     Parameters:
     :param omega: array of float
                   array of Frequency values
+    
     :param Ge:    float
                   equilibrium G
+    
     :param G:     array of loats
                   Relaxance values
+    
     :param tau:   array of floats
                   characteristic time
     - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -43,10 +46,13 @@ def J_storage(omega, Jg, J, tau):
     Parameters:
     :param omega: array of floats
                   array of Frequency values
+    
     :param Jg:    float
                   classy compliance
+    
     :param J:     array of floats
                   Compliance values
+    
     :param tau:   array of floats
                   characteristic time
     - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -72,10 +78,13 @@ def G_loss(omega, Ge, G, tau):
     Parameters:
     :param omega: array of floats
                   array of Frequency values
+    
     :param Ge:    float
                   equilibrium G
+    
     :param G:     array of floats
                   Relaxance values
+    
     :param tau:   array of floats
                   characteristic time
     - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -98,12 +107,16 @@ def J_loss(omega, Jg, J, tau, phi=0):
     Parameters:
     :param omega: array of floats
                   array of Frequency values
+    
     :param Jg:    float
                   classy compliance
+    
     :param J:     array of floats
                   Compliance values
+    
     :param tau:   array of floats
                   characteristic time
+    
     :param phi:   float
                   steady-state/ stead-flow fluidity
     - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -127,16 +140,23 @@ def theta_loss(input_param, omega, p1, p2, p3, phi=0):
     The function calculates the Loss Angle, theta, using J oro G as input.
     - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
     Parameters:
-    :param omega: array of floats
-                  array of Frequency values
-    :param p1:    float
-                  placeholder variable for classy compliance or equivalent G
-    :param p2:    array of floats
-                  placeholder variable for Compliance or Relaxance values
-    :param p3:    array of floats
-                  placeholder variable fot characteristic time
-    :param phi:   float
-                  steady-state/steady-flow fluidity
+    :param input_param: string
+                        either 'G' or 'J'
+    
+    :param omega:       array of floats
+                        array of Frequency values
+    
+    :param p1:          float
+                        placeholder variable for classy compliance or equivalent G
+    
+    :param p2:          array of floats
+                        placeholder variable for Compliance or Relaxance values
+    
+    :param p3:          array of floats
+                        placeholder variable fot characteristic time
+    
+    :param phi:         float
+                        steady-state/steady-flow fluidity
     - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
     Return, function ouput:
     :return:      theta:    array of floats
@@ -163,14 +183,19 @@ def response(model, t, p1, p2, p3, phi = 0.0):
     Parameters:
     :param model: string
                   indicate either what to return, either 'Relaxance', 'Comppliance' or ’Retardance'
+    
     :param t:     array of floats
                   time array
+    
     :param p1:    float
                   placeholder variable for classy compliance or equivalent G
+    
     :param p2:    array of floats
                   placeholder variable for Compliance or Relaxance values
+    
     :param p3:    array of floats
                   placeholder variable fot characteristic time
+    
     :param phi:   float
                   steady-state/steady-flow fluidity
     - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -216,12 +241,16 @@ def log_scale(x, t, tr=0.1, st=1.0, nn = 10):
     Parameters:
     :param x:   array of floats
                 fitst array to be scaled
+    
     :param t:   array of floats
                 time array to be scaled
+    
     :param tr:
 
+    
     :param st:
 
+    
     :param nn:
 
     - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -275,14 +304,19 @@ def conv(model, t, F, p1, p2, p3):
     Parameters:
     :param model:   string
                     state Viscoelastic model used, e.g. 'Gen. Kelvin-Voigt', 'Gen. Maxwell'
+    
     :param t:       array of floats
                     time array
+    
     :param F:       array of floats
                     Force array
+    
     :param p1:      float
                     placeholder variable for Ge or Jg
+    
     :param p2:      array of floats
                     placeholder variable for G or J
+    
     :param p3:      array of floats
                     placeholder variable for charactersitic time, tau
     - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -321,14 +355,19 @@ def conv_fitting_log(params, t, F, tip, arms, dt):
     Parameters:
     :param params:  dict file
                     Dictionary file storing the parameters
+    
     :param t:       array of floats
                     time array scaled in logarithmic scale
+    
     :param F:       array of floats
                     Force array sclaed in logarithmic scale
+    
     :param tip:     array of floats
                     Tip position or deformation array scaled in logarithmic scale
+    
     :param arms:    int
                     Number of amrs
+    
     :param dt:      float
                     time step of logarithmic sclaed time array
     - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -382,14 +421,19 @@ def conv_fitting_time(params, t, F, tip, arms, dt):
     Parameters:
     :param params:  dict file
                     Dictionary file storing the parameters
+    
     :param t:       array of floats
                     time array scaled
+    
     :param F:       array of floats
                     Force array sclaed
+    
     :param tip:     array of floats
                     Tip position or deformation array
+    
     :param arms:    int
                     Number of amrs
+    
     :param dt:      float
                     time step sclaed time array
     - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -443,32 +487,44 @@ def NLS_fit(technique, Jg, J, tau, arms, t, tip, F, alfa, t_res, t_exp):
     Parameters:
     :param technique: string
                       using Log sclaed or time scaled data
+    
     :param Jg:        float
                       classy compliance
+    
     :param J:         array of floats
                       Compliance
+    
     :param tau:       array of floats
                       characteristic time
+    
     :param arms:      int
                       number of model arms
+    
     :param t:         array of floats
                       time array
+    
     :param tip:       array of floats
                       tip position over time
+    
     :param F:         array of floats
                       tip position over time
+    
     :param alfa:      float
                       Constant converting stress/strain to force/defromation by adjusting for tip geometry
+    
     :param t_res:     float
                       time resolution of experiment, used to log scale the data
+    
     :param t_exp:     float
                       final time of experiment
     - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
     Return, function outout:
     :return:          Jg_fit:   float
                                 classy compliance fitted
+                      
                       J_fit:    float
                                 fitted complince terms
+                      
                       tau_fit:  float
                                 fitted characteristic time
     """
