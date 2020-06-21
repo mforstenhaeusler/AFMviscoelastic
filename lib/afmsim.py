@@ -78,20 +78,37 @@ def differential_constants(model, p1, p2, p3):
 
     return u_arr, q_arr
 
+
 def uq_prescribed(simultime, u ,q,z_indent,R=10.0e-9):
     """
+    Description:
     This simulation gives the resulting force in time when a generalized viscoelastic material is indented with a known indentation history
+    - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+    Parameter:
+    :param simultime:   float 
+                        total time of the simulation in seconds
     
-    Input:
-        simultime: float, total time of the simulation in seconds
-        u: numpy array, coefficients of the generalized differential equation (operator equation, i.e., Eq 2 in López‐Guerra, et.al. JPolSciB, 55(10) )
-        q: numpy array, coefficients of the generalized differential equation (operator equation, i.e., Eq 2 in López‐Guerra, et.al. JPolSciB, 55(10) )
-        z_indent: numpy array: indentation history
-        R: float, optional, tip radius
-    Output:
-        t: numpy array, this is the time array
-        z_indent: numpy array, indentation history
-        Fts: numpy array, force history that corresponds to the input indentation history    
+    :param u:           numpy array 
+                        coefficients of the generalized differential equation (operator equation, i.e., Eq 2 in López‐Guerra, et.al. JPolSciB, 55(10) )
+    
+    :param q:           numpy array
+                        coefficients of the generalized differential equation (operator equation, i.e., Eq 2 in López‐Guerra, et.al. JPolSciB, 55(10) )
+    
+    :param z_indent:    numpy array
+                        indentation history
+    
+    :param R:           float
+                        optional, tip radius
+    - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+    Return, function output:
+    :param t:           numpy array
+                        this is the time array
+    
+    :param z_indent:    numpy array
+                        indentation history
+     
+    :param Fts:         numpy array
+                        force history that corresponds to the input indentation history    
     """
     
     alpha = 16.0/3.0*np.sqrt(R)  #cell constant, from Lee and Radok equation, assumed material incompressibility (nu=0.5)
