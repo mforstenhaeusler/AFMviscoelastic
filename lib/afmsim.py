@@ -213,83 +213,147 @@ def contact_mode_gen(time, timestep, zb_init, vb, u, q, k_m1, fo1, Q1, vdw, R, n
     h = np.zeros((len(time), len(u)))  # initialize strain matrix, each column stores a derivative
     tip = np.zeros(len(time))  # initializes tip position solution array
     base = np.zeros(len(time))  # initializes base position of solution array
-    F_ts = 0
+    F_ts = []
 
     # initialzes parameters for Verlet algorithm
     v1_z = vb  # cantilever velocity
     z1 = zb_init  # current cantilever position
     z1_old = zb_init  # previous cantilever positition
-    zb_initial = zb_init  # initial bae position of cantilever
+    zb_initial = zb_init  # initial base position of cantilever
     TipPos = zb_init  # tip position
 
     # Y_ndot = np.zeros((len(time),len(q)))   #zero initialization of derivatives of indentation^1.5
     # F_mdot = np.zeros((len(time),len(q)))  #zero initialization of derivatives of force
-    Fts = np.zeros(len(time))  # initialization of Force array
+    Fts = 0  # initialization of Force array
 
-    for k in np.arange(1, len(time), 1):  # advancing in time
-        if Fts[k] < F_trigger:
-            # Euler Integration calculating the base position
-            zb = zb_initial - vb * time[k]  # iterates base position
+    if zb_initial > z_contact:
+        for k in np.arange(len(time)):  # advancing in time
+            if Fts < F_trigger:
+                # Euler Integration calculating the base position
+                zb = zb_initial - vb * time[k]  # iterates base position
 
-            # Cantilever dynamics - EOM
-            a1_z = (-k_m1 * z1 - (m1 * (fo1 * 2 * np.pi) * v1_z / Q1) + k_m1 * zb + F_ts) / m1  # calculates tip acc
+                # Cantilever dynamics - EOM
+                a1_z = (-k_m1 * z1 - (m1 * (fo1 * 2 * np.pi) * v1_z / Q1) + k_m1 * zb + Fts) / m1  # calculates tip acc
 
-            # Verlet algorithm to calculate z and central difference to calculate v
-            z1_new = 2 * z1 - z1_old + a1_z * pow(timestep, 2)
-            v1_z = (z1_new - z1_old) / (2 * timestep)
+                # Verlet algorithm to calculate z and central difference to calculate v
+                z1_new = 2 * z1 - z1_old + a1_z * pow(timestep, 2)
+                v1_z = (z1_new - z1_old) / (2 * timestep)
 
-            z1_old = z1
-            z1 = z1_new
+                z1_old = z1
+                z1 = z1_new
 
-            # Inizializes tip position
-            TipPos = z1_new
+                # Inizializes tip position
+                TipPos = z1_new
 
-            if TipPos < z_contact:
+                if TipPos < z_contact:
 
-                h[k, 0] = (-TipPos) ** 1.5  # zero derivative of indentation^1.5 corresponds to sample deformation^1.5
-                for i in np.arange(1, len(q), 1):  # calculating higher derivatives for indentation^1.5
-                    h[k, i] = (h[k, i - 1] - h[k - 1, i - 1]) / timestep
+                    h[k, 0] = (-TipPos) ** 1.5  # zero derivative of indentation^1.5 corresponds to sample deformation^1.5
+                    for i in np.arange(1, len(q), 1):  # calculating higher derivatives for indentation^1.5
+                        h[k, i] = (h[k, i - 1] - h[k - 1, i - 1]) / timestep
 
-                suma_q = 0.0
-                for i in np.arange(0, len(q), 1):  # range(len(q)):
-                    suma_q = suma_q + alpha / u[-1] * q[i] * h[k, i]
+                    suma_q = 0.0
+                    for i in np.arange(0, len(q), 1):  # range(len(q)):
+                        suma_q = suma_q + alpha / u[-1] * q[i] * h[k, i]
+                        
+                    suma_u = 0.0
+                    for i in np.arange(0, len(q) - 1, 1):
+                        suma_u = suma_u + 1.0 / u[-1] * u[i] * F[k - 1, i]
 
-                suma_u = 0.0
-                for i in np.arange(0, len(q) - 1, 1):
-                    suma_u = suma_u + 1.0 / u[-1] * u[i] * F[k - 1, i]
+                    F[k, -1] = suma_q - suma_u  # Calculating highest order time derivative on Force
+                    for i in np.arange(len(q) - 2, -1, -1):  # calculating lower order time derivatives on Force from the highest one, using Euler scheme
+                        F[k, i] = F[k - 1, i] + F[k, i + 1] * timestep
 
-                F[k, -1] = suma_q - suma_u  # Calculating highest order time derivative on Force
-                for i in np.arange(len(q) - 2, -1,
-                                   -1):  # calculating lower order time derivatives on Force from the highest one, using Euler scheme
-                    F[k, i] = F[k - 1, i] + F[k, i + 1] * timestep
+                    Fts = F[k, 0]
 
-                F_ts = F[k, 0]
+                    if vdw < 0.5:  # no vdW interaction
+                        F_ts.append(Fts)  # stored tip-sample force
+                    else:
+                        F_ts.append(Fts - H * R / (6 * pow(a, 2)))  # stored tip-sample force
+                else:  # van der Vaal interaction
+                    if vdw > 0.5:  # van der Waal interaction
+                        F_ts.append(- H * R / (6 * (TipPos + a) ** 2))  # stored tip-sample force
+                    else:  # no van der Waal interaction
+                        F_ts.append(Fts)  # stored tip-sample force
 
-                if vdw < 0.5:  # no vdW interaction
-                    Fts[k] = F_ts  # zero derivative of force is Fts
-                else:
-                    Fts[k] = F_ts - H * R / (6 * pow(a, 2))
+                tip[k] = TipPos  # tip position of cantilever
+                base[k] = zb  # base position of cantilever
+
+                if k % 1000000 == 0:  # print ever 100,000th step to show the calc is running
+                    print('Iteration:', k)
+                    print('For:', Fts)
+                    print('Tip:', TipPos)
+                    print('Base:', zb)
+
             else:
-                if vdw > 0.5:
-                    Fts[k] = - H * R / (6 * (TipPos + a) ** 2)
-                else:
-                    Fts[k] = F[k, 0]
+                print('F_trigger:', F_trigger)
+                print(k)
+                break
 
-            tip[k] = TipPos  # tip position of cantilever
-            base[k] = zb  # base position of cantilever
+    if zb_initial == z_contact:
+        for k in np.arange(1, len(time), 1):  # advancing in time
+            if Fts < F_trigger:
+                # Euler Integration calculating the base position
+                zb = zb_initial - vb * time[k]  # iterates base position
 
-            if k % 1000000 == 0:  # print ever 100,000th step to show the calc is running
-                print('Iteration:', k)
-                print('For:', Fts[k])
-                print('Tip:', TipPos)
-                print('Base:', zb)
+                # Cantilever dynamics - EOM
+                a1_z = (-k_m1 * z1 - (m1 * (fo1 * 2 * np.pi) * v1_z / Q1) + k_m1 * zb + Fts) / m1  # calculates tip acc
 
-        else:
-            print('F_trigger:', F_trigger)
-            print(k)
-            break
+                # Verlet algorithm to calculate z and central difference to calculate v
+                z1_new = 2 * z1 - z1_old + a1_z * pow(timestep, 2)
+                v1_z = (z1_new - z1_old) / (2 * timestep)
 
-    return Fts, tip, base
+                z1_old = z1
+                z1 = z1_new
+
+                # Inizializes tip position
+                TipPos = z1_new
+
+                if TipPos < z_contact:
+
+                    h[k, 0] = (-TipPos) ** 1.5  # zero derivative of indentation^1.5 corresponds to sample deformation^1.5
+                    for i in np.arange(1, len(q), 1):  # calculating higher derivatives for indentation^1.5
+                        h[k, i] = (h[k, i - 1] - h[k - 1, i - 1]) / timestep
+
+                    suma_q = 0.0
+                    for i in np.arange(0, len(q), 1):  # range(len(q)):
+                        suma_q = suma_q + alpha / u[-1] * q[i] * h[k, i]
+
+                    suma_u = 0.0
+                    for i in np.arange(0, len(q) - 1, 1):
+                        suma_u = suma_u + 1.0 / u[-1] * u[i] * F[k - 1, i]
+
+                    F[k, -1] = suma_q - suma_u  # Calculating highest order time derivative on Force
+                    for i in np.arange(len(q) - 2, -1,
+                                       -1):  # calculating lower order time derivatives on Force from the highest one, using Euler scheme
+                        F[k, i] = F[k - 1, i] + F[k, i + 1] * timestep
+
+                    Fts = F[k, 0]
+
+                    if vdw < 0.5:  # no vdW interaction
+                        F_ts.append(Fts)  # stored tip-sample force
+                    else:
+                        F_ts.append(Fts - H * R / (6 * pow(a, 2)))  # stored tip-sample force
+                else:  # van der Vaal interaction
+                    if vdw > 0.5:  # van der Waal interaction
+                        F_ts.append(- H * R / (6 * (TipPos + a) ** 2))  # stored tip-sample force
+                    else:  # no van der Waal interaction
+                        F_ts.append(Fts)  # stored tip-sample force
+
+                tip[k] = TipPos  # tip position of cantilever
+                base[k] = zb  # base position of cantilever
+
+                if k % 1000000 == 0:  # print ever 100,000th step to show the calc is running
+                    print('Iteration:', k)
+                    print('For:', Fts)
+                    print('Tip:', TipPos)
+                    print('Base:', zb)
+
+            else:
+                print('F_trigger:', F_trigger)
+                print(k)
+                break
+
+    return np.array(F_ts), tip, base
 
 
 def contact_mode(t, timestep, zb_init, vb, u, q, k_m1, fo1, Q1, vdw, R, nu=0.5, z_contact=0.0, F_trigger=800.0e-9, H=2.0e-19, a=0.2e-9):
