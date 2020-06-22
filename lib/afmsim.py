@@ -139,10 +139,164 @@ def uq_prescribed(simultime, u ,q,z_indent,R=10.0e-9):
     return t, z_indent, Fts
 
 
-def contact_mode(t, timestep, zb_init, vb, u, q, k_m1, fo1, Q1, vdw, R, nu, z_contact=0.0, F_trigger=800.0e-9, H=2.0e-19, a=0.2e-9):
+def contact_mode_gen(time, timestep, zb_init, vb, u, q, k_m1, fo1, Q1, vdw, R, nu=0.5, z_contact=0.0, F_trigger=800.0e-9, H=2.0e-19, a=0.2e-9):
     """
     Description:
-    This function simulates tha AFM technique - Contact Mode.
+    This function simulates the AFM technique - Contact Mode for an arbitrary number of characteristic
+    times.
+    - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+    Parameters:
+    :param time:           array of floats
+                        time array including each iteration time step
+
+    :param timestep:    float
+                        time step of time array
+
+    :param zb_init:     float
+                        initial base position
+
+    :param vb:          float
+                        base velocity of approach
+
+    :param u:           float array of floats
+                        differential constants
+
+    :param q:           array of floats
+                        differential constants
+
+    :param k_m1:        float
+                        stiffness of cantilever
+
+    :param fo1:         float
+                        natural frequency of the free air cantilever
+
+    :param Q1:          float
+                        Quality factor
+
+    :param vdw:         float
+                        vdW Force trigger variable
+
+    :param R:           float
+                        radius of tip indentor or probe
+
+    Default Parameters
+    :param nu:          float
+                        Poission's ration of sample material, assumption: incompressible -> nu=0.5
+
+    :param z_contact:   float
+                        constant indicating the sample surface location and therefore determines
+                        when contact occurs
+
+    :param F_trigger:   float
+                        trigger force, max allowable force
+
+    :param H:           float
+                        Hammaker constant
+
+    :param a:           float
+                        intermolecular distance
+    - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+    Return, function output:
+    :return:            np.array(F_ts):   array of floats
+                                          tip-sample force solution array
+                        np.array(tip):    array of floats
+                                          tip position solution array, (deformation of sample material)
+                        np.array(base):   array of floats
+                                          cantilever base position solution array
+    - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+    """
+    alpha = 8.0 / 3 * np.sqrt(R) / (1 - nu)  # constant converting stress/strain to force/deformation
+    m1 = k_m1 / pow((fo1 * 2 * np.pi), 2)  # equivalent mass of cantilever
+
+    # initialize solution and calculation array
+    F = np.zeros((len(time), len(u)))  # initialize force matrix, each column stores a derivative
+    h = np.zeros((len(time), len(u)))  # initialize strain matrix, each column stores a derivative
+    tip = np.zeros(len(time))  # initializes tip position solution array
+    base = np.zeros(len(time))  # initializes base position of solution array
+    F_ts = 0
+
+    # initialzes parameters for Verlet algorithm
+    v1_z = vb  # cantilever velocity
+    z1 = zb_init  # current cantilever position
+    z1_old = zb_init  # previous cantilever positition
+    zb_initial = zb_init  # initial bae position of cantilever
+    TipPos = zb_init  # tip position
+
+    # Y_ndot = np.zeros((len(time),len(q)))   #zero initialization of derivatives of indentation^1.5
+    # F_mdot = np.zeros((len(time),len(q)))  #zero initialization of derivatives of force
+    Fts = np.zeros(len(time))  # initialization of Force array
+
+    for k in np.arange(1, len(time), 1):  # advancing in time
+        if Fts[k] < F_trigger:
+            # Euler Integration calculating the base position
+            zb = zb_initial - vb * time[k]  # iterates base position
+
+            # Cantilever dynamics - EOM
+            a1_z = (-k_m1 * z1 - (m1 * (fo1 * 2 * np.pi) * v1_z / Q1) + k_m1 * zb + F_ts) / m1  # calculates tip acc
+
+            # Verlet algorithm to calculate z and central difference to calculate v
+            z1_new = 2 * z1 - z1_old + a1_z * pow(timestep, 2)
+            v1_z = (z1_new - z1_old) / (2 * timestep)
+
+            z1_old = z1
+            z1 = z1_new
+
+            # Inizializes tip position
+            TipPos = z1_new
+
+            if TipPos < z_contact:
+
+                h[k, 0] = (-TipPos) ** 1.5  # zero derivative of indentation^1.5 corresponds to sample deformation^1.5
+                for i in np.arange(1, len(q), 1):  # calculating higher derivatives for indentation^1.5
+                    h[k, i] = (h[k, i - 1] - h[k - 1, i - 1]) / timestep
+
+                suma_q = 0.0
+                for i in np.arange(0, len(q), 1):  # range(len(q)):
+                    suma_q = suma_q + alpha / u[-1] * q[i] * h[k, i]
+
+                suma_u = 0.0
+                for i in np.arange(0, len(q) - 1, 1):
+                    suma_u = suma_u + 1.0 / u[-1] * u[i] * F[k - 1, i]
+
+                F[k, -1] = suma_q - suma_u  # Calculating highest order time derivative on Force
+                for i in np.arange(len(q) - 2, -1,
+                                   -1):  # calculating lower order time derivatives on Force from the highest one, using Euler scheme
+                    F[k, i] = F[k - 1, i] + F[k, i + 1] * timestep
+
+                F_ts = F[k, 0]
+
+                if vdw < 0.5:  # no vdW interaction
+                    Fts[k] = F_ts  # zero derivative of force is Fts
+                else:
+                    Fts[k] = F_ts - H * R / (6 * pow(a, 2))
+            else:
+                if vdw > 0.5:
+                    Fts[k] = - H * R / (6 * (TipPos + a) ** 2)
+                else:
+                    Fts[k] = F[k, 0]
+
+            tip[k] = TipPos  # tip position of cantilever
+            base[k] = zb  # base position of cantilever
+
+            if k % 1000000 == 0:  # print ever 100,000th step to show the calc is running
+                print('Iteration:', k)
+                print('For:', Fts[k])
+                print('Tip:', TipPos)
+                print('Base:', zb)
+
+        else:
+            print('F_trigger:', F_trigger)
+            print(k)
+            break
+
+    return Fts, tip, base
+
+
+def contact_mode(t, timestep, zb_init, vb, u, q, k_m1, fo1, Q1, vdw, R, nu=0.5, z_contact=0.0, F_trigger=800.0e-9, H=2.0e-19, a=0.2e-9):
+    """
+    Description:
+    This function simulates the AFM technique - Contact Mode for Standard 3 Parameter Model, 3 and 5-Arm
+    Generalized Maxwell/Kelvin-Voigt Model.
     - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
     Parameters:
     :param t:           array of floats
@@ -177,9 +331,10 @@ def contact_mode(t, timestep, zb_init, vb, u, q, k_m1, fo1, Q1, vdw, R, nu, z_co
 
     :param R:           float
                         radius of tip indentor or probe
-
+    
+    Default Parameters:
     :param nu:          float
-                        Poission's ration of sample material
+                        Poission's ration of sample material, assumption: incompressible -> nu=0.5
 
     :param z_contact:   float
                         constant indicating the sample surface location and therefore determines
