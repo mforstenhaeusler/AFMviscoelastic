@@ -627,3 +627,213 @@ def contact_mode(t, timestep, zb_init, vb, u, q, k_m1, fo1, Q1, vdw, R, nu=0.5, 
                 break
 
     return np.array(F_ts), np.array(tip), np.array(base)
+
+
+def verlet(zb, Fo1, Fo2, Fo3, Q1, Q2, Q3, k_m1, k_m2, k_m3, mass, time, z1, z2, z3, v1, v2, v3, z1_old, z2_old, z3_old, Fts, dt, fo1, fo2, fo3, f1, f2, f3):
+    """
+    Description: 
+    This function perform the verlot algorihm to calculate the tip position of the cantilever.
+    Parameters:
+    
+    Return:
+    """
+    a1 = ( -k_m1*z1 - (mass*(fo1*2*np.pi)*v1/Q1) + Fo1*np.cos((f1*2*np.pi)*time) + Fo2*np.cos((f2*2*np.pi)*time) + Fo3*np.cos((f3*2*np.pi)*time) + Fts ) /mass
+    a2 = ( -k_m2*z2 - (mass*(fo2*2*np.pi)*v2/Q2) + Fo1*np.cos((f1*2*np.pi)*time) + Fo2*np.cos((f2*2*np.pi)*time) + Fo3*np.cos((f3*2*np.pi)*time) + Fts ) /mass
+    a3 = ( -k_m3*z3 - (mass*(fo3*2*np.pi)*v3/Q3) + Fo1*np.cos((f1*2*np.pi)*time) + Fo2*np.cos((f2*2*np.pi)*time) + Fo3*np.cos((f3*2*np.pi)*time) + Fts ) /mass
+    
+    #Verlet algorithm (central difference) to calculate position of the tip
+    z1_new = 2*z1 - z1_old + a1*pow(dt, 2)
+    z2_new = 2*z2 - z2_old + a2*pow(dt, 2)
+    z3_new = 2*z3 - z3_old + a3*pow(dt, 2)
+
+    #central difference to calculate velocities
+    v1 = (z1_new - z1_old)/(2*dt)
+    v2 = (z2_new - z2_old)/(2*dt)
+    v3 = (z3_new - z3_old)/(2*dt)
+    
+    #Updating z1_old and z1 for the next run
+    z1_old = z1
+    z1 = z1_new
+    
+    z2_old = z2
+    z2 = z2_new
+    
+    z3_old = z3
+    z3 = z3_new
+    
+    tip = zb + z1 + z2 + z3
+    #tip_v = v1 + v2 + v3
+    return tip, z1, z2, z3, v1, v2, v3, z1_old, z2_old, z3_old
+
+numba_verlet = jit()(verlet)
+
+
+def tapping(u, q, R, timestep, simultime, zb, A1, k_m1, fo1, printstep='default', Ndy = 1000, dmax = 10.0e-9, startprint ='default', Q1=100, Q2=200, Q3=300, H=2.0e-19, A2 = 0.0, A3 = 0.0, nu=0.5):
+    """
+    Description: 
+    This function performs the Tapping Mode AFM measurement technique. 
+    Parameters:
+    
+    Return:
+    """
+    fo2 = 6.27*fo1            # resonance frequency of the second eigenmode (value taken from Garcia, R., & Herruzo, E. T. (2012). The emergence of multifrequency force microscopy. Nature nanotechnology, 7(4), 217-226.)
+    fo3 = 17.6*fo1           # resonance frequency of the third eigenmode (value taken from Garcia, R., & Herruzo, E. T. (2012). The emergence of multifrequency force microscopy. Nature nanotechnology, 7(4), 217-226.)
+    k_m2 = k_m1*(fo2/fo1)**2
+    k_m3 = k_m1*(fo3/fo1)**2
+    mass = k_m1/(2.0*np.pi*fo1)**2  
+    f1 = fo1  #excited at resonance
+    f2 = fo2  #excited at resonance
+    f3 = fo3  #excited at resonance
+    #Calculating the force amplitude to achieve the given free amplitude from amplitude response of tip excited oscillator
+    Fo1 = k_m1*A1/(fo1*2*np.pi)**2*(  (  (fo1*2*np.pi)**2 - (f1*2*np.pi)**2 )**2 + (fo1*2*np.pi*f1*2*np.pi/Q1)**2  )**0.5 #Amplitude of 1st mode's force to achieve target amplitude based on amplitude response of a tip excited harmonic oscillator
+    Fo2 = k_m2*A2/(fo2*2*np.pi)**2*(  (  (fo2*2*np.pi)**2 - (f2*2*np.pi)**2 )**2 + (fo2*2*np.pi*f2*2*np.pi/Q2)**2  )**0.5  #Amplitude of 2nd mode's force to achieve target amplitude based on amplitude response of a tip excited harmonic oscillator
+    Fo3 = k_m3*A3/(fo3*2*np.pi)**2*(  (  (fo3*2*np.pi)**2 - (f3*2*np.pi)**2 )**2 + (fo3*2*np.pi*f3*2*np.pi/Q3)**2  )**0.5    #Amplitude of 3rd mode's force to achieve target amplitude based on amplitude response of a tip excited harmonic oscillator
+    
+    alpha = 8.0 / 3 * np.sqrt(R) / (1 - nu)  # constant converting stress/strain to force/deformation
+    m1 = k_m1 / pow((fo1 * 2 * np.pi), 2)  # equivalent mass of cantilever
+    time = np.arange(0, simultime, timestep)
+    Fts = 0
+    z_contact = 0 
+    zb = 0 
+    
+    # initialize solution and calculation array
+    F = np.zeros((len(time), len(u)))  # initialize force matrix, each column stores a derivative
+    h = np.zeros((len(time), len(u)))  # initialize strain matrix, each column stores a derivative
+    tip = np.zeros(len(time))  # initializes tip position solution array
+    base = np.zeros(len(time))  # initializes base position of solution array
+    F_ts = []
+    z_b = np.zeros(len(time))
+    
+    if zb_initial > z_contact:
+        for k in range(len(time)):
+            TipPos, z1, z2, z3, v1, v2, v3, z1_old, z2_old, z3_old = numba_verlet(zb, Fo1, Fo2, Fo3, Q1, Q2, Q3, k_m1, k_m2, k_m3, mass, time[t], z1, z2, z3, v1, v2, v3, z1_old, z2_old, z3_old, Fts, timestep, fo1, fo2, fo3, f1, f2, f3)
+            
+            tip[k] = TipPos  # keeps track of tip position history
+            t_b[k] = zb
+            F_ts.append(Fts)
+            
+            if TipPos > zb:  # no contact, Force = 0 
+                suma_q = 0.0
+                for i in np.arange(0, len(q) - 1, 1):
+                    suma_u = suma_u + 1.0 / q[-1] * q[i] * h[k - 1, i]
+                
+                h[k, -1] = suma_q
+                for i in np.arange(len(q) - 2, -1, -1):  # calculating lower order time derivatives of deformation from the highest one, using Euler scheme
+                    h[k, i] = h[k - 1, i] + h[k, i + 1] * timestep
+                
+                if h[k, 0] > TipPos:  #contact, sample surface surpassed the tip position
+                    zb = TipPos 
+                    h[k, 0] = (-zb) ** 1.5  # zero derivative of indentation^1.5 corresponds to sample deformation^1.5
+                    for i in np.arange(1, len(q), 1):  # calculating higher derivatives for indentation^1.5
+                        h[k, i] = (h[k, i - 1] - h[k - 1, i - 1]) / timestep
+
+                    suma_q = 0.0
+                    for i in np.arange(0, len(q), 1):  # range(len(q)):
+                        suma_q = suma_q + alpha / u[-1] * q[i] * h[k, i]
+
+                    suma_u = 0.0
+                    for i in np.arange(0, len(q) - 1, 1):
+                        suma_u = suma_u + 1.0 / u[-1] * u[i] * F[k - 1, i]
+
+                    F[k, -1] = suma_q - suma_u  # Calculating highest order time derivative on Force
+                    for i in np.arange(len(q) - 2, -1, -1):  # calculating lower order time derivatives on Force from the highest one, using Euler scheme
+                        F[k, i] = F[k - 1, i] + F[k, i + 1] * timestep
+
+                    Fts = F[k, 0]
+                    
+                else:  # true non-contact
+                    zb = h[k, 0] 
+                    Fts = 0 
+                    
+            else:  # contact,  
+                h[k, 0] = (-TipPos) ** 1.5  # zero derivative of indentation^1.5 corresponds to sample deformation^1.5
+                for i in np.arange(1, len(q), 1):  # calculating higher derivatives for indentation^1.5
+                    h[k, i] = (h[k, i - 1] - h[k - 1, i - 1]) / timestep
+
+                suma_q = 0.0
+                for i in np.arange(0, len(q), 1):  # range(len(q)):
+                    suma_q = suma_q + alpha / u[-1] * q[i] * h[k, i]
+
+                suma_u = 0.0
+                for i in np.arange(0, len(q) - 1, 1):
+                    suma_u = suma_u + 1.0 / u[-1] * u[i] * F[k - 1, i]
+
+                F[k, -1] = suma_q - suma_u  # Calculating highest order time derivative on Force
+                for i in np.arange(len(q) - 2, -1, -1):  # calculating lower order time derivatives of Force from the highest one, using Euler scheme
+                    F[k, i] = F[k - 1, i] + F[k, i + 1] * timestep
+
+                Fts = F[k, 0]
+           # van der Waals Implementation
+           #if TipPos > 0:  #overall non-contact
+           #    F = -H*R/( 6.0*( (TipPos) + a )**2 )
+            #else: #overall contact
+            #    F = Fts - H*R/(6.0*a**2)  
+            
+    if zb_initial == z_contact:
+        for k in range(1, len(time), 1):
+            TipPos, z1, z2, z3, v1, v2, v3, z1_old, z2_old, z3_old = numba_verlet(zb, Fo1, Fo2, Fo3, Q1, Q2, Q3, k_m1, k_m2, k_m3, mass, time[t], z1, z2, z3, v1, v2, v3, z1_old, z2_old, z3_old, Fts, timestep, fo1, fo2, fo3, f1, f2, f3)
+            
+            tip[k] = TipPos  # keeps track of tip position history
+            z_b[k] = zb
+            F_ts.append(Fts)
+            
+            if TipPos > zb:  # no contact, Force = 0 
+                
+                suma_q = 0.0
+                for i in np.arange(0, len(q) - 1, 1):
+                    suma_u = suma_u + 1.0 / q[-1] * q[i] * h[k - 1, i]
+                
+                h[k, -1] = suma_q
+                for i in np.arange(len(q) - 2, -1, -1):  # calculating lower order time derivatives of deformation from the highest one, using Euler scheme
+                    h[k, i] = h[k - 1, i] + h[k, i + 1] * timestep
+                
+                if h[k, 0] > TipPos:  #contact, sample surface surpassed the tip position
+                    zb = TipPos 
+                    h[k, 0] = (-zb) ** 1.5  # zero derivative of indentation^1.5 corresponds to sample deformation^1.5
+                    for i in np.arange(1, len(q), 1):  # calculating higher derivatives for indentation^1.5
+                        h[k, i] = (h[k, i - 1] - h[k - 1, i - 1]) / timestep
+
+                    suma_q = 0.0
+                    for i in np.arange(0, len(q), 1):  # range(len(q)):
+                        suma_q = suma_q + alpha / u[-1] * q[i] * h[k, i]
+
+                    suma_u = 0.0
+                    for i in np.arange(0, len(q) - 1, 1):
+                        suma_u = suma_u + 1.0 / u[-1] * u[i] * F[k - 1, i]
+
+                    F[k, -1] = suma_q - suma_u  # Calculating highest order time derivative on Force
+                    for i in np.arange(len(q) - 2, -1, -1):  # calculating lower order time derivatives on Force from the highest one, using Euler scheme
+                        F[k, i] = F[k - 1, i] + F[k, i + 1] * timestep
+
+                    Fts = F[k, 0]
+                    
+                else:  # true non-contact
+                    zb = h[k, 0]
+                    Fts = 0 
+                    
+            else:  # contact,  
+                h[k, 0] = (-TipPos) ** 1.5  # zero derivative of indentation^1.5 corresponds to sample deformation^1.5
+                for i in np.arange(1, len(q), 1):  # calculating higher derivatives for indentation^1.5
+                    h[k, i] = (h[k, i - 1] - h[k - 1, i - 1]) / timestep
+
+                suma_q = 0.0
+                for i in np.arange(0, len(q), 1):  # range(len(q)):
+                    suma_q = suma_q + alpha / u[-1] * q[i] * h[k, i]
+
+                suma_u = 0.0
+                for i in np.arange(0, len(q) - 1, 1):
+                    suma_u = suma_u + 1.0 / u[-1] * u[i] * F[k - 1, i]
+
+                F[k, -1] = suma_q - suma_u  # Calculating highest order time derivative on Force
+                for i in np.arange(len(q) - 2, -1, -1):  # calculating lower order time derivatives of Force from the highest one, using Euler scheme
+                    F[k, i] = F[k - 1, i] + F[k, i + 1] * timestep
+
+                Fts = F[k, 0]
+                
+            # van der Waals Implementation
+            #if TipPos > 0:  #overall non-contact
+            #    F = -H*R/( 6.0*( (TipPos) + a )**2 )
+            #else: #overall contact
+            #    F = Fts - H*R/(6.0*a**2) 
+            
+    return np.array(F_ts), tip, z_b, 
