@@ -143,7 +143,7 @@ def contact_mode_gen(time, timestep, zb_init, vb, u, q, k_m1, fo1, Q1, vdw, R, n
     """
     Description:
     This function simulates the AFM technique - Contact Mode for an arbitrary number of characteristic
-    times.
+    times. It can perform approach and retract simulations ONLY if F<0.
     - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
     Parameters:
     :param time:           array of floats
@@ -210,7 +210,7 @@ def contact_mode_gen(time, timestep, zb_init, vb, u, q, k_m1, fo1, Q1, vdw, R, n
 
     # initialize solution and calculation array
     F = np.zeros((len(time), len(u)))  # initialize force matrix, each column stores a derivative
-    h = np.zeros((len(time), len(u)))  # initialize strain matrix, each column stores a derivative
+    p = np.zeros((len(time), len(u)))  # initialize strain matrix, each column stores a derivative
     tip = np.zeros(len(time))  # initializes tip position solution array
     base = np.zeros(len(time))  # initializes base position of solution array
     F_ts = []
@@ -247,13 +247,13 @@ def contact_mode_gen(time, timestep, zb_init, vb, u, q, k_m1, fo1, Q1, vdw, R, n
 
                 if TipPos < z_contact:
 
-                    h[k, 0] = (-TipPos) ** 1.5  # zero derivative of indentation^1.5 corresponds to sample deformation^1.5
+                    p[k, 0] = (-TipPos) ** 1.5  # zero derivative of indentation^1.5 corresponds to sample deformation^1.5
                     for i in np.arange(1, len(q), 1):  # calculating higher derivatives for indentation^1.5
-                        h[k, i] = (h[k, i - 1] - h[k - 1, i - 1]) / timestep
+                        p[k, i] = (p[k, i - 1] - p[k - 1, i - 1]) / timestep
 
                     suma_q = 0.0
                     for i in np.arange(0, len(q), 1):  # range(len(q)):
-                        suma_q = suma_q + alpha / u[-1] * q[i] * h[k, i]
+                        suma_q = suma_q + alpha / u[-1] * q[i] * p[k, i]
                         
                     suma_u = 0.0
                     for i in np.arange(0, len(q) - 1, 1):
@@ -310,21 +310,20 @@ def contact_mode_gen(time, timestep, zb_init, vb, u, q, k_m1, fo1, Q1, vdw, R, n
 
                 if TipPos < z_contact:
 
-                    h[k, 0] = (-TipPos) ** 1.5  # zero derivative of indentation^1.5 corresponds to sample deformation^1.5
+                    p[k, 0] = (-TipPos) ** 1.5  # zero derivative of indentation^1.5 corresponds to sample deformation^1.5
                     for i in np.arange(1, len(q), 1):  # calculating higher derivatives for indentation^1.5
-                        h[k, i] = (h[k, i - 1] - h[k - 1, i - 1]) / timestep
+                        p[k, i] = (p[k, i - 1] - p[k - 1, i - 1]) / timestep
 
                     suma_q = 0.0
                     for i in np.arange(0, len(q), 1):  # range(len(q)):
-                        suma_q = suma_q + alpha / u[-1] * q[i] * h[k, i]
+                        suma_q = suma_q + alpha / u[-1] * q[i] * p[k, i]
 
                     suma_u = 0.0
                     for i in np.arange(0, len(q) - 1, 1):
                         suma_u = suma_u + 1.0 / u[-1] * u[i] * F[k - 1, i]
 
                     F[k, -1] = suma_q - suma_u  # Calculating highest order time derivative on Force
-                    for i in np.arange(len(q) - 2, -1,
-                                       -1):  # calculating lower order time derivatives on Force from the highest one, using Euler scheme
+                    for i in np.arange(len(q) - 2, -1, -1):  # calculating lower order time derivatives on Force from the highest one, using Euler scheme
                         F[k, i] = F[k - 1, i] + F[k, i + 1] * timestep
 
                     Fts = F[k, 0]
@@ -360,7 +359,7 @@ def contact_mode_gen_2(type, time, timestep, zb_init, vb, u, q, k_m1, fo1, Q1, v
     """
     Description:
     This function simulates the AFM technique - Contact Mode for an arbitrary number of characteristic
-    times.
+    times. It can perform approach and retract simulations.
     - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
     Parameters:
     :param type:        string
@@ -430,7 +429,7 @@ def contact_mode_gen_2(type, time, timestep, zb_init, vb, u, q, k_m1, fo1, Q1, v
 
     # initialize solution and calculation array
     F = np.zeros((len(time), len(u)))  # initialize force matrix, each column stores a derivative
-    h = np.zeros((len(time), len(u)))  # initialize strain matrix, each column stores a derivative
+    p = np.zeros((len(time), len(u)))  # initialize strain matrix, each column stores a derivative
     tip = np.zeros(len(time))  # initializes tip position solution array
     base = np.zeros(len(time))  # initializes base position of solution array
     F_ts = []
@@ -472,22 +471,21 @@ def contact_mode_gen_2(type, time, timestep, zb_init, vb, u, q, k_m1, fo1, Q1, v
 
                         if TipPos < z_contact:  # contact
 
-                            h[k, 0] = (
+                            p[k, 0] = (
                                           -TipPos) ** 1.5  # zero derivative of indentation^1.5 corresponds to sample deformation^1.5
                             for i in np.arange(1, len(q), 1):  # calculating higher derivatives for indentation^1.5
-                                h[k, i] = (h[k, i - 1] - h[k - 1, i - 1]) / timestep
+                                p[k, i] = (p[k, i - 1] - p[k - 1, i - 1]) / timestep
 
                             suma_q = 0.0
                             for i in np.arange(0, len(q), 1):  # range(len(q)):
-                                suma_q = suma_q + alpha / u[-1] * q[i] * h[k, i]
+                                suma_q = suma_q + alpha / u[-1] * q[i] * p[k, i]
 
                             suma_u = 0.0
                             for i in np.arange(0, len(q) - 1, 1):
                                 suma_u = suma_u + 1.0 / u[-1] * u[i] * F[k - 1, i]
 
                             F[k, -1] = suma_q - suma_u  # Calculating highest order time derivative on Force
-                            for i in np.arange(len(q) - 2, -1,
-                                               -1):  # calculating lower order time derivatives on Force from the highest one, using Euler scheme
+                            for i in np.arange(len(q) - 2, -1, -1):  # calculating lower order time derivatives on Force from the highest one, using Euler scheme
                                 F[k, i] = F[k - 1, i] + F[k, i + 1] * timestep
 
                             Fts = F[k, 0]
@@ -532,13 +530,13 @@ def contact_mode_gen_2(type, time, timestep, zb_init, vb, u, q, k_m1, fo1, Q1, v
 
                         if TipPos < z_contact:  # contact
 
-                            h[k, 0] = (-TipPos) ** 1.5  # zero derivative of indentation^1.5 corresponds to sample deformation^1.5
+                            p[k, 0] = (-TipPos) ** 1.5  # zero derivative of indentation^1.5 corresponds to sample deformation^1.5
                             for i in np.arange(1, len(q), 1):  # calculating higher derivatives for indentation^1.5
-                                h[k, i] = (h[k, i - 1] - h[k - 1, i - 1]) / timestep
+                                p[k, i] = (p[k, i - 1] - p[k - 1, i - 1]) / timestep
 
                             suma_q = 0.0
                             for i in np.arange(0, len(q), 1):  # range(len(q)):
-                                suma_q = suma_q + alpha / u[-1] * q[i] * h[k, i]
+                                suma_q = suma_q + alpha / u[-1] * q[i] * p[k, i]
 
                             suma_u = 0.0
                             for i in np.arange(0, len(q) - 1, 1):
@@ -556,12 +554,12 @@ def contact_mode_gen_2(type, time, timestep, zb_init, vb, u, q, k_m1, fo1, Q1, v
 
                                 suma_q = 0.0
                                 for i in np.arange(0, len(q) - 1, 1):  # solve LHS of equ. ()
-                                    suma_q = suma_u + 1.0 / q[-1] * q[i] * h[k - 1, i]
+                                    suma_q = suma_u + 1.0 / q[-1] * q[i] * p[k - 1, i]
 
                                 suma_u = 0.0  # solve RHS of equ. ()
-                                h[k, -1] = (suma_q - suma_u)  # Calculating highest order time derivative of deformation
+                                p[k, -1] = (suma_q - suma_u)  # Calculating highest order time derivative of deformation
                                 for i in np.arange(len(q) - 2, -1, -1):  # calculating lower order time derivatives of deformation from the highest one, using Euler scheme
-                                    h[k, i] = h[k - 1, i] + h[k, i + 1] * timestep
+                                    p[k, i] = p[k - 1, i] + p[k, i + 1] * timestep
 
                                 tip_wu_init.append(TipPos)
                                 tip_wu_norm = TipPos - tip_wu_init[0]  # Normalizing tip position when F=0 to 0
@@ -621,14 +619,13 @@ def contact_mode_gen_2(type, time, timestep, zb_init, vb, u, q, k_m1, fo1, Q1, v
 
                         if TipPos < z_contact:  # contact
 
-                            h[k, 0] = (
-                                          -TipPos) ** 1.5  # zero derivative of indentation^1.5 corresponds to sample deformation^1.5
+                            p[k, 0] = (-TipPos) ** 1.5  # zero derivative of indentation^1.5 corresponds to sample deformation^1.5
                             for i in np.arange(1, len(q), 1):  # calculating higher derivatives for indentation^1.5
-                                h[k, i] = (h[k, i - 1] - h[k - 1, i - 1]) / timestep
+                                p[k, i] = (p[k, i - 1] - p[k - 1, i - 1]) / timestep
 
                             suma_q = 0.0
                             for i in np.arange(0, len(q), 1):  # range(len(q)):
-                                suma_q = suma_q + alpha / u[-1] * q[i] * h[k, i]
+                                suma_q = suma_q + alpha / u[-1] * q[i] * p[k, i]
 
                             suma_u = 0.0
                             for i in np.arange(0, len(q) - 1, 1):
@@ -681,22 +678,20 @@ def contact_mode_gen_2(type, time, timestep, zb_init, vb, u, q, k_m1, fo1, Q1, v
 
                         if TipPos < z_contact:  # contact
 
-                            h[k, 0] = (
-                                          -TipPos) ** 1.5  # zero derivative of indentation^1.5 corresponds to sample deformation^1.5
+                            p[k, 0] = (-TipPos) ** 1.5  # zero derivative of indentation^1.5 corresponds to sample deformation^1.5
                             for i in np.arange(1, len(q), 1):  # calculating higher derivatives for indentation^1.5
-                                h[k, i] = (h[k, i - 1] - h[k - 1, i - 1]) / timestep
+                                p[k, i] = (p[k, i - 1] - p[k - 1, i - 1]) / timestep
 
                             suma_q = 0.0
-                            for i in np.arange(0, len(q), 1):  # range(len(q)):
-                                suma_q = suma_q + alpha / u[-1] * q[i] * h[k, i]
+                            for i in np.arange(0, len(q), 1):  
+                                suma_q = suma_q + alpha / u[-1] * q[i] * p[k, i]
 
                             suma_u = 0.0
                             for i in np.arange(0, len(q) - 1, 1):
                                 suma_u = suma_u + 1.0 / u[-1] * u[i] * F[k - 1, i]
 
                             F[k, -1] = suma_q - suma_u  # Calculating highest order time derivative on Force
-                            for i in np.arange(len(q) - 2, -1,
-                                               -1):  # calculating lower order time derivatives on Force from the highest one, using Euler scheme
+                            for i in np.arange(len(q) - 2, -1, -1):  # calculating lower order time derivatives on Force from the highest one, using Euler scheme
                                 F[k, i] = F[k - 1, i] + F[k, i + 1] * timestep
 
                             if F[k, 0] < 0:  # loss of contact on way up, when F <= 0
@@ -707,13 +702,13 @@ def contact_mode_gen_2(type, time, timestep, zb_init, vb, u, q, k_m1, fo1, Q1, v
 
                                 suma_q = 0.0
                                 for i in np.arange(0, len(q) - 1, 1):  # solve LHS of equ. ()
-                                    suma_q = suma_u + 1.0 / q[-1] * q[i] * h[k - 1, i]
+                                    suma_q = suma_u + 1.0 / q[-1] * q[i] * p[k - 1, i]
 
                                 suma_u = 0.0  # solve RHS of equ. ()
-                                h[k, -1] = (suma_q - suma_u)  # Calculating highest order time derivative of deformation
+                                p[k, -1] = (suma_q - suma_u)  # Calculating highest order time derivative of deformation
                                 for i in np.arange(len(q) - 2, -1,
                                                    -1):  # calculating lower order time derivatives of deformation from the highest one, using Euler scheme
-                                    h[k, i] = h[k - 1, i] + h[k, i + 1] * timestep
+                                    p[k, i] = p[k - 1, i] + p[k, i + 1] * timestep
 
                                 tip_wu_init.append(TipPos)
                                 tip_wu_norm = TipPos - tip_wu_init[0]  # Normalizing tip position when F=0 to 0
@@ -772,13 +767,13 @@ def contact_mode_gen_2(type, time, timestep, zb_init, vb, u, q, k_m1, fo1, Q1, v
 
                     if TipPos < z_contact:
 
-                        h[k, 0] = (-TipPos) ** 1.5  # zero derivative of indentation^1.5 corresponds to sample deformation^1.5
+                        p[k, 0] = (-TipPos) ** 1.5  # zero derivative of indentation^1.5 corresponds to sample deformation^1.5
                         for i in np.arange(1, len(q), 1):  # calculating higher derivatives for indentation^1.5
-                            h[k, i] = (h[k, i - 1] - h[k - 1, i - 1]) / timestep
+                            p[k, i] = (p[k, i - 1] - p[k - 1, i - 1]) / timestep
 
                         suma_q = 0.0
                         for i in np.arange(0, len(q), 1):  # range(len(q)):
-                            suma_q = suma_q + alpha / u[-1] * q[i] * h[k, i]
+                            suma_q = suma_q + alpha / u[-1] * q[i] * p[k, i]
 
                         suma_u = 0.0
                         for i in np.arange(0, len(q) - 1, 1):
@@ -831,13 +826,13 @@ def contact_mode_gen_2(type, time, timestep, zb_init, vb, u, q, k_m1, fo1, Q1, v
 
                     if TipPos < z_contact:
 
-                        h[k, 0] = (-TipPos) ** 1.5  # zero derivative of indentation^1.5 corresponds to sample deformation^1.5
+                        p[k, 0] = (-TipPos) ** 1.5  # zero derivative of indentation^1.5 corresponds to sample deformation^1.5
                         for i in np.arange(1, len(q), 1):  # calculating higher derivatives for indentation^1.5
-                            h[k, i] = (h[k, i - 1] - h[k - 1, i - 1]) / timestep
+                            p[k, i] = (p[k, i - 1] - p[k - 1, i - 1]) / timestep
 
                         suma_q = 0.0
                         for i in np.arange(0, len(q), 1):  # range(len(q)):
-                            suma_q = suma_q + alpha / u[-1] * q[i] * h[k, i]
+                            suma_q = suma_q + alpha / u[-1] * q[i] * p[k, i]
 
                         suma_u = 0.0
                         for i in np.arange(0, len(q) - 1, 1):
@@ -943,7 +938,7 @@ def contact_mode(t, timestep, zb_init, vb, u, q, k_m1, fo1, Q1, vdw, R, nu=0.5, 
 
     # initialize solution and calculation array
     F = np.zeros((len(t), len(u)))  # initialize force matrix, each column stores a derivative
-    h = np.zeros((len(t), len(u)))  # initialize strain matrix, each column stores a derivative
+    p = np.zeros((len(t), len(u)))  # initialize strain matrix, each column stores a derivative
     tip = []  # initializes tip position solution array
     base = []  # initializes base position of solution array
     F_ts = []  # initializes F solution array
@@ -980,12 +975,12 @@ def contact_mode(t, timestep, zb_init, vb, u, q, k_m1, fo1, Q1, vdw, R, nu=0.5, 
                 TipPos = z1_new
 
                 if TipPos < z_contact:
-                    h[i][0] = (-TipPos) ** 1.5  # lowest deformation derivative
+                    p[i][0] = (-TipPos) ** 1.5  # lowest deformation derivative
                     # uses finite difference to calcuate higher order derivatives
-                    h[i][1] = (h[i][0] - h[i - 1][0]) / timestep
+                    p[i][1] = (p[i][0] - p[i - 1][0]) / timestep
 
                     # calcualtes highest force deriavtive first
-                    F[i][1] = (alpha * (q[0] * h[i][0] + q[1] * h[i][1]) - u[0] * F[i - 1][0]) / u[1]
+                    F[i][1] = (alpha * (q[0] * p[i][0] + q[1] * p[i][1]) - u[0] * F[i - 1][0]) / u[1]
                     # uses euler integration to calculate lower order force derivatives
                     F[i][0] = F[i - 1][0] + F[i][1] * timestep
 
@@ -1036,14 +1031,14 @@ def contact_mode(t, timestep, zb_init, vb, u, q, k_m1, fo1, Q1, vdw, R, nu=0.5, 
                 TipPos = z1_new
 
                 if TipPos < z_contact:
-                    h[i][0] = (-TipPos) ** 1.5  # lowest deformation derivative
+                    p[i][0] = (-TipPos) ** 1.5  # lowest deformation derivative
                     # uses finite difference to calcuate higher order derivatives
-                    h[i][1] = (h[i][0] - h[i - 1][0]) / timestep
-                    h[i][2] = (h[i][1] - h[i - 1][1]) / timestep
-                    h[i][3] = (h[i][2] - h[i - 1][2]) / timestep
+                    p[i][1] = (p[i][0] - p[i - 1][0]) / timestep
+                    p[i][2] = (p[i][1] - p[i - 1][1]) / timestep
+                    p[i][3] = (p[i][2] - p[i - 1][2]) / timestep
 
                     # calcualtes highest force deriavtive first
-                    F[i][3] = (alpha * (q[0] * h[i][0] + q[1] * h[i][1] + q[2] * h[i][2] + q[3] * h[i][3]) - u[0] *
+                    F[i][3] = (alpha * (q[0] * p[i][0] + q[1] * p[i][1] + q[2] * p[i][2] + q[3] * p[i][3]) - u[0] *
                                F[i - 1][0] - u[1] * F[i - 1][1] - u[2] * F[i - 1][2]) / u[3]
                     # uses euler integration to calculate lower order force derivatives
                     F[i][2] = F[i - 1][2] + F[i][3] * timestep
@@ -1097,17 +1092,17 @@ def contact_mode(t, timestep, zb_init, vb, u, q, k_m1, fo1, Q1, vdw, R, nu=0.5, 
                 TipPos = z1_new
 
                 if TipPos < z_contact:
-                    h[i][0] = (-TipPos) ** 1.5  # lowest deformation derivative
+                    p[i][0] = (-TipPos) ** 1.5  # lowest deformation derivative
                     # uses finite difference to calcuate higher order derivatives
-                    h[i][1] = (h[i][0] - h[i - 1][0]) / timestep
-                    h[i][2] = (h[i][1] - h[i - 1][1]) / timestep
-                    h[i][3] = (h[i][2] - h[i - 1][2]) / timestep
-                    h[i][4] = (h[i][3] - h[i - 1][3]) / timestep
-                    h[i][5] = (h[i][4] - h[i - 1][4]) / timestep
+                    p[i][1] = (p[i][0] - p[i - 1][0]) / timestep
+                    p[i][2] = (p[i][1] - p[i - 1][1]) / timestep
+                    p[i][3] = (p[i][2] - p[i - 1][2]) / timestep
+                    p[i][4] = (p[i][3] - p[i - 1][3]) / timestep
+                    p[i][5] = (p[i][4] - p[i - 1][4]) / timestep
 
                     # calcualtes highest force deriavtive first
-                    F[i][5] = (alpha * (q[0] * h[i][0] + q[1] * h[i][1] + q[2] * h[i][2] + q[3] * h[i][3] + q[4] *
-                                        h[i][4] + q[5] * h[i][5]) - u[0] * F[i - 1][0] - u[1] * F[i - 1][1] - u[2] *
+                    F[i][5] = (alpha * (q[0] * p[i][0] + q[1] * p[i][1] + q[2] * p[i][2] + q[3] * p[i][3] + q[4] *
+                                        p[i][4] + q[5] * p[i][5]) - u[0] * F[i - 1][0] - u[1] * F[i - 1][1] - u[2] *
                                F[i - 1][2] - u[3] * F[i - 1][3] - u[4] * F[i - 1][4]) / u[5]
                     # uses euler integration to calculate lower order force derivatives
                     F[i][4] = F[i - 1][4] + F[i][5] * timestep
@@ -1214,7 +1209,7 @@ def tapping(u, q, R, timestep, simultime, zb, A1, k_m1, fo1, printstep='default'
     
     # initialize solution and calculation array
     F = np.zeros((len(time), len(u)))  # initialize force matrix, each column stores a derivative
-    h = np.zeros((len(time), len(u)))  # initialize strain matrix, each column stores a derivative
+    p = np.zeros((len(time), len(u)))  # initialize strain matrix, each column stores a derivative
     tip = np.zeros(len(time))  # initializes tip position solution array
     base = np.zeros(len(time))  # initializes base position of solution array
     F_ts = []
@@ -1231,21 +1226,21 @@ def tapping(u, q, R, timestep, simultime, zb, A1, k_m1, fo1, printstep='default'
             if TipPos > zb:  # no contact, Force = 0 
                 suma_q = 0.0
                 for i in np.arange(0, len(q) - 1, 1):
-                    suma_u = suma_u + 1.0 / q[-1] * q[i] * h[k - 1, i]
+                    suma_u = suma_u + 1.0 / q[-1] * q[i] * p[k - 1, i]
                 
-                h[k, -1] = suma_q
+                p[k, -1] = suma_q
                 for i in np.arange(len(q) - 2, -1, -1):  # calculating lower order time derivatives of deformation from the highest one, using Euler scheme
-                    h[k, i] = h[k - 1, i] + h[k, i + 1] * timestep
+                    p[k, i] = p[k - 1, i] + p[k, i + 1] * timestep
                 
-                if h[k, 0] > TipPos:  #contact, sample surface surpassed the tip position
+                if p[k, 0] > TipPos:  #contact, sample surface surpassed the tip position
                     zb = TipPos 
-                    h[k, 0] = (-zb) ** 1.5  # zero derivative of indentation^1.5 corresponds to sample deformation^1.5
+                    p[k, 0] = (-zb) ** 1.5  # zero derivative of indentation^1.5 corresponds to sample deformation^1.5
                     for i in np.arange(1, len(q), 1):  # calculating higher derivatives for indentation^1.5
-                        h[k, i] = (h[k, i - 1] - h[k - 1, i - 1]) / timestep
+                        p[k, i] = (p[k, i - 1] - p[k - 1, i - 1]) / timestep
 
                     suma_q = 0.0
                     for i in np.arange(0, len(q), 1):  # range(len(q)):
-                        suma_q = suma_q + alpha / u[-1] * q[i] * h[k, i]
+                        suma_q = suma_q + alpha / u[-1] * q[i] * p[k, i]
 
                     suma_u = 0.0
                     for i in np.arange(0, len(q) - 1, 1):
@@ -1258,17 +1253,17 @@ def tapping(u, q, R, timestep, simultime, zb, A1, k_m1, fo1, printstep='default'
                     Fts = F[k, 0]
                     
                 else:  # true non-contact
-                    zb = h[k, 0] 
+                    zb = p[k, 0] 
                     Fts = 0 
                     
             else:  # contact,  
-                h[k, 0] = (-TipPos) ** 1.5  # zero derivative of indentation^1.5 corresponds to sample deformation^1.5
+                p[k, 0] = (-TipPos) ** 1.5  # zero derivative of indentation^1.5 corresponds to sample deformation^1.5
                 for i in np.arange(1, len(q), 1):  # calculating higher derivatives for indentation^1.5
-                    h[k, i] = (h[k, i - 1] - h[k - 1, i - 1]) / timestep
+                    p[k, i] = (p[k, i - 1] - p[k - 1, i - 1]) / timestep
 
                 suma_q = 0.0
                 for i in np.arange(0, len(q), 1):  # range(len(q)):
-                    suma_q = suma_q + alpha / u[-1] * q[i] * h[k, i]
+                    suma_q = suma_q + alpha / u[-1] * q[i] * p[k, i]
 
                 suma_u = 0.0
                 for i in np.arange(0, len(q) - 1, 1):
@@ -1297,21 +1292,21 @@ def tapping(u, q, R, timestep, simultime, zb, A1, k_m1, fo1, printstep='default'
                 
                 suma_q = 0.0
                 for i in np.arange(0, len(q) - 1, 1):
-                    suma_u = suma_u + 1.0 / q[-1] * q[i] * h[k - 1, i]
+                    suma_u = suma_u + 1.0 / q[-1] * q[i] * p[k - 1, i]
                 
-                h[k, -1] = suma_q
+                p[k, -1] = suma_q
                 for i in np.arange(len(q) - 2, -1, -1):  # calculating lower order time derivatives of deformation from the highest one, using Euler scheme
-                    h[k, i] = h[k - 1, i] + h[k, i + 1] * timestep
+                    p[k, i] = p[k - 1, i] + p[k, i + 1] * timestep
                 
-                if h[k, 0] > TipPos:  #contact, sample surface surpassed the tip position
+                if p[k, 0] > TipPos:  #contact, sample surface surpassed the tip position
                     zb = TipPos 
-                    h[k, 0] = (-zb) ** 1.5  # zero derivative of indentation^1.5 corresponds to sample deformation^1.5
+                    p[k, 0] = (-zb) ** 1.5  # zero derivative of indentation^1.5 corresponds to sample deformation^1.5
                     for i in np.arange(1, len(q), 1):  # calculating higher derivatives for indentation^1.5
-                        h[k, i] = (h[k, i - 1] - h[k - 1, i - 1]) / timestep
+                        p[k, i] = (p[k, i - 1] - p[k - 1, i - 1]) / timestep
 
                     suma_q = 0.0
                     for i in np.arange(0, len(q), 1):  # range(len(q)):
-                        suma_q = suma_q + alpha / u[-1] * q[i] * h[k, i]
+                        suma_q = suma_q + alpha / u[-1] * q[i] * p[k, i]
 
                     suma_u = 0.0
                     for i in np.arange(0, len(q) - 1, 1):
@@ -1324,17 +1319,17 @@ def tapping(u, q, R, timestep, simultime, zb, A1, k_m1, fo1, printstep='default'
                     Fts = F[k, 0]
                     
                 else:  # true non-contact
-                    zb = h[k, 0]
+                    zb = p[k, 0]
                     Fts = 0 
                     
             else:  # contact,  
-                h[k, 0] = (-TipPos) ** 1.5  # zero derivative of indentation^1.5 corresponds to sample deformation^1.5
+                p[k, 0] = (-TipPos) ** 1.5  # zero derivative of indentation^1.5 corresponds to sample deformation^1.5
                 for i in np.arange(1, len(q), 1):  # calculating higher derivatives for indentation^1.5
-                    h[k, i] = (h[k, i - 1] - h[k - 1, i - 1]) / timestep
+                    p[k, i] = (p[k, i - 1] - p[k - 1, i - 1]) / timestep
 
                 suma_q = 0.0
                 for i in np.arange(0, len(q), 1):  # range(len(q)):
-                    suma_q = suma_q + alpha / u[-1] * q[i] * h[k, i]
+                    suma_q = suma_q + alpha / u[-1] * q[i] * p[k, i]
 
                 suma_u = 0.0
                 for i in np.arange(0, len(q) - 1, 1):
