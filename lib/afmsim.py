@@ -456,8 +456,7 @@ def contact_mode_gen_2(type, time, timestep, zb_init, vb, u, q, k_m1, fo1, Q1, v
                         zb = zb_initial - vb * time[k]  # iterates base position
 
                         # Cantilever dynamics - EOM
-                        a1_z = (-k_m1 * z1 - (
-                                m1 * (fo1 * 2 * np.pi) * v1_z / Q1) + k_m1 * zb + Fts) / m1  # calculates tip acc
+                        a1_z = (-k_m1 * z1 - (m1 * (fo1 * 2 * np.pi) * v1_z / Q1) + k_m1 * zb + Fts) / m1  # calculates tip acc
 
                         # Verlet algorithm to calculate z and central difference to calculate v
                         z1_new = 2 * z1 - z1_old + a1_z * pow(timestep, 2)
@@ -471,24 +470,23 @@ def contact_mode_gen_2(type, time, timestep, zb_init, vb, u, q, k_m1, fo1, Q1, v
 
                         if TipPos < z_contact:  # contact
 
-                            p[k, 0] = (
-                                          -TipPos) ** 1.5  # zero derivative of indentation^1.5 corresponds to sample deformation^1.5
-                            for i in np.arange(1, len(q), 1):  # calculating higher derivatives for indentation^1.5
-                                p[k, i] = (p[k, i - 1] - p[k - 1, i - 1]) / timestep
+                            p[k, 0] = (-TipPos) ** 1.5  # zero derivative of indentation based on Eq. 16
+                            for i in np.arange(1, len(q), 1):  # calculating higher derivatives for indentation based on Eq. 17-19
+                                p[k, i] = (p[k, i - 1] - p[k - 1, i - 1]) / timestep  
 
                             suma_q = 0.0
-                            for i in np.arange(0, len(q), 1):  # range(len(q)):
-                                suma_q = suma_q + alpha / u[-1] * q[i] * p[k, i]
-
+                            for i in np.arange(0, len(q), 1):  # calculating LHS of Eq. 8 based on Eq. 21
+                                suma_q = suma_q + alpha / u[-1] * q[i] * p[k, i]  
+                                
                             suma_u = 0.0
-                            for i in np.arange(0, len(q) - 1, 1):
-                                suma_u = suma_u + 1.0 / u[-1] * u[i] * F[k - 1, i]
+                            for i in np.arange(0, len(q) - 1, 1):  # calculating RHS of Eq. 8 based on Eq. 22
+                                suma_u = suma_u + 1.0 / u[-1] * u[i] * F[k - 1, i]  
 
-                            F[k, -1] = suma_q - suma_u  # Calculating highest order time derivative on Force
-                            for i in np.arange(len(q) - 2, -1, -1):  # calculating lower order time derivatives on Force from the highest one, using Euler scheme
-                                F[k, i] = F[k - 1, i] + F[k, i + 1] * timestep
+                            F[k, -1] = suma_q - suma_u  # Calculating highest order force derivative based on Eq. 20
+                            for i in np.arange(len(q) - 2, -1, -1):  # calculating lower order force derivatives Force based on Eq. 23-25
+                                F[k, i] = F[k - 1, i] + F[k, i + 1] * timestep  
 
-                            Fts = F[k, 0]
+                            Fts = F[k, 0]  # initialize tip-sample force 
 
                             if vdw < 0.5:  # no vdW interaction
                                 F_ts.append(Fts)  # stored tip-sample force
