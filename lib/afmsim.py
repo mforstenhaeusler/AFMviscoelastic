@@ -470,20 +470,20 @@ def contact_mode_gen_2(type, time, timestep, zb_init, vb, u, q, k_m1, fo1, Q1, v
 
                         if TipPos < z_contact:  # contact
 
-                            p[k, 0] = (-TipPos) ** 1.5  # zero derivative of indentation based on Eq. 16
-                            for i in np.arange(1, len(q), 1):  # calculating higher derivatives for indentation based on Eq. 17-19
+                            p[k, 0] = (-TipPos) ** 1.5  # zero derivative of indentation based on Eq. 17
+                            for i in np.arange(1, len(q), 1):  # calculating higher derivatives for indentation based on Eq. 18-20
                                 p[k, i] = (p[k, i - 1] - p[k - 1, i - 1]) / timestep  
 
                             suma_q = 0.0
-                            for i in np.arange(0, len(q), 1):  # calculating LHS of Eq. 8 based on Eq. 21
+                            for i in np.arange(0, len(q), 1):  # calculating LHS of Eq. 8 based on Eq. 22
                                 suma_q = suma_q + alpha / u[-1] * q[i] * p[k, i]  
                                 
                             suma_u = 0.0
-                            for i in np.arange(0, len(q) - 1, 1):  # calculating RHS of Eq. 8 based on Eq. 22
+                            for i in np.arange(0, len(q) - 1, 1):  # calculating RHS of Eq. 8 based on Eq. 23
                                 suma_u = suma_u + 1.0 / u[-1] * u[i] * F[k - 1, i]  
 
-                            F[k, -1] = suma_q - suma_u  # Calculating highest order force derivative based on Eq. 20
-                            for i in np.arange(len(q) - 2, -1, -1):  # calculating lower order force derivatives Force based on Eq. 23-25
+                            F[k, -1] = suma_q - suma_u  # Calculating highest order force derivative based on Eq. 21
+                            for i in np.arange(len(q) - 2, -1, -1):  # calculating lower order force derivatives Force based on Eq. 24-26
                                 F[k, i] = F[k - 1, i] + F[k, i + 1] * timestep  
 
                             Fts = F[k, 0]  # initialize tip-sample force 
