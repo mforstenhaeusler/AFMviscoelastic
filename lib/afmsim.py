@@ -1,7 +1,7 @@
 """
 Created on Wed Jun 10th 2020
 @author: Maximilian Forstenhaeusler
-Description: This library contains core algorithm to simulate different AFM measuring techniques
+Description: This library contains core algorithms to simulate different AFM measuring techniques
 """
 
 import numpy as np
